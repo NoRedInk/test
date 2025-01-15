@@ -5,3 +5,4 @@ docs/
 *.html
 /documentation.json
 /package-lock.json
+.direnv/
