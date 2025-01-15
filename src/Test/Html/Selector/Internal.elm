@@ -145,7 +145,7 @@ query fn fnAll selector list =
                     fnAll selectors elems
 
                 WithAll selectors ->
-                    List.concatMap (fn (ElmHtmlQuery.Multiple (List.map selectorToQuery selectors))) elems
+                    applyWithAll fn fnAll selectors elems
 
                 Classes classes ->
                     List.concatMap (fn (ElmHtmlQuery.ClassList classes)) elems
@@ -197,44 +197,56 @@ query fn fnAll selector list =
                     []
 
 
-selectorToQuery : Selector -> ElmHtmlQuery.Selector
+applyWithAll :     (ElmHtmlQuery.Selector -> ElmHtml msg -> List (ElmHtml msg))
+    -> (List Selector -> List (ElmHtml msg) -> List (ElmHtml msg))
+    -> List Selector
+    -> List (ElmHtml msg)
+    -> List (ElmHtml msg)
+applyWithAll fn fnAll selectors list =
+    -- First, apply all selectors that can be mapped to Multiple
+    List.concatMap (fn (ElmHtmlQuery.Multiple (List.filterMap selectorToQuery selectors))) list
+    -- Then, apply the ones that can't over the result set
+    |> fnAll (List.filter (\selector -> selectorToQuery selector == Nothing) selectors)
+
+
+selectorToQuery : Selector -> Maybe ElmHtmlQuery.Selector
 selectorToQuery selector =
     case selector of
-        All selectors ->
-            Debug.todo "Can't nest Selector.all inside Selector.withAll"
+        All _ ->
+            Nothing
 
-        WithAll selectors ->
-            Debug.todo "Can't nest Selector.withAll inside Selector.withAll"
+        WithAll _ ->
+            Nothing
 
         Classes classes ->
-            ElmHtmlQuery.ClassList classes
+            Just <| ElmHtmlQuery.ClassList classes
 
         Class class ->
-            ElmHtmlQuery.ClassList [ class ]
+            Just <| ElmHtmlQuery.ClassList [ class ]
 
         Attribute { name, value } ->
-            ElmHtmlQuery.Attribute name value
+            Just <| ElmHtmlQuery.Attribute name value
 
         BoolAttribute { name, value } ->
-            ElmHtmlQuery.BoolAttribute name value
+            Just <| ElmHtmlQuery.BoolAttribute name value
 
         Style style ->
-            ElmHtmlQuery.Style style
+            Just <| ElmHtmlQuery.Style style
 
         Tag name ->
-            ElmHtmlQuery.Tag name
+            Just <| ElmHtmlQuery.Tag name
 
         Text text ->
-            ElmHtmlQuery.ContainsText text
+            Just <| ElmHtmlQuery.ContainsText text
 
         ExactText text ->
-            ElmHtmlQuery.ContainsExactText text
+            Just <| ElmHtmlQuery.ContainsExactText text
 
-        Containing selectors ->
-            Debug.todo "fix containing too"
+        Containing _ ->
+            Nothing
 
         Invalid ->
-            Debug.todo "idk what to do about invalid"
+            Nothing
 
 
 namedAttr : String -> String -> Selector
