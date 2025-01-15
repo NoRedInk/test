@@ -1,6 +1,6 @@
 module Test.Html.Selector exposing
     ( Selector
-    , tag, text, exactText, containing, attribute, all
+    , tag, text, exactText, containing, attribute, all, withAll
     , id, class, classes, exactClassName, style, checked, selected, disabled
     )
 
@@ -11,7 +11,7 @@ module Test.Html.Selector exposing
 
 ## General Selectors
 
-@docs tag, text, exactText, containing, attribute, all
+@docs tag, text, exactText, containing, attribute, all, withAll
 
 
 ## Attributes
@@ -32,6 +32,32 @@ import Test.Html.Selector.Internal as Internal exposing (..)
 type alias Selector =
     Internal.Selector
 
+
+{-| Combine the given selectors into one which requires all of them to match OVER A SINGLE ELEMENT.
+
+    import Html
+    import Html.Attributes as Attr
+    import Test.Html.Query as Query
+    import Test exposing (test)
+    import Test.Html.Selector exposing (class, text, all, Selector)
+
+
+    replyBtnSelector : Selector
+    replyBtnSelector =
+        all [ class "btn", text "Reply" ]
+
+
+    test "Button has the class 'btn' and the text 'Reply'" <|
+        \() ->
+            Html.button [ Attr.class "btn btn-large" ] [ Html.text "Reply" ]
+                |> Query.fromHtml
+                |> Query.has [ replyBtnSelector ]
+
+-}
+
+withAll : List Selector -> Selector
+withAll =
+    WithAll
 
 {-| Combine the given selectors into one which requires all of them to match.
 

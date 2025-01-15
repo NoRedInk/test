@@ -16,6 +16,7 @@ type Selector
     | ExactText String
     | Containing (List Selector)
     | Invalid
+    | WithAll (List Selector)
 
 
 selectorToString : Selector -> String
@@ -34,6 +35,11 @@ selectorToString criteria =
     in
     case criteria of
         All list ->
+            list
+                |> List.map selectorToString
+                |> String.join " "
+
+        WithAll list ->
             list
                 |> List.map selectorToString
                 |> String.join " "
@@ -138,6 +144,9 @@ query fn fnAll selector list =
                 All selectors ->
                     fnAll selectors elems
 
+                WithAll selectors ->
+                    List.concatMap (fn (ElmHtmlQuery.Multiple (List.map selectorToQuery selectors))) elems
+
                 Classes classes ->
                     List.concatMap (fn (ElmHtmlQuery.ClassList classes)) elems
 
@@ -186,6 +195,46 @@ query fn fnAll selector list =
 
                 Invalid ->
                     []
+
+
+selectorToQuery : Selector -> ElmHtmlQuery.Selector
+selectorToQuery selector =
+    case selector of
+        All selectors ->
+            Debug.todo "Can't nest Selector.all inside Selector.withAll"
+
+        WithAll selectors ->
+            Debug.todo "Can't nest Selector.withAll inside Selector.withAll"
+
+        Classes classes ->
+            ElmHtmlQuery.ClassList classes
+
+        Class class ->
+            ElmHtmlQuery.ClassList [ class ]
+
+        Attribute { name, value } ->
+            ElmHtmlQuery.Attribute name value
+
+        BoolAttribute { name, value } ->
+            ElmHtmlQuery.BoolAttribute name value
+
+        Style style ->
+            ElmHtmlQuery.Style style
+
+        Tag name ->
+            ElmHtmlQuery.Tag name
+
+        Text text ->
+            ElmHtmlQuery.ContainsText text
+
+        ExactText text ->
+            ElmHtmlQuery.ContainsExactText text
+
+        Containing selectors ->
+            Debug.todo "fix containing too"
+
+        Invalid ->
+            Debug.todo "idk what to do about invalid"
 
 
 namedAttr : String -> String -> Selector

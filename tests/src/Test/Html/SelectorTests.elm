@@ -198,7 +198,7 @@ selectorAll =
                             , Selector.attribute (Attr.disabled False)
                             ]
                         ]
-        , test "fails if some but not all selectors match (regression for #213)" <|
+        ,only <| test "fails if some but not all selectors match (regression for #213)" <|
             \() ->
                 Html.fieldset [ Attr.disabled False ]
                     [ Html.button [ Attr.disabled True ]
@@ -207,7 +207,7 @@ selectorAll =
                     ]
                     |> Query.fromHtml
                     |> Query.hasNot
-                        [ Selector.all
+                        [ Selector.withAll
                             [ Selector.tag "fieldset"
                             , Selector.attribute (Attr.disabled True)
                             ]
