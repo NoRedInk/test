@@ -9,6 +9,7 @@ import Html.Attributes as Attr
 import Test exposing (..)
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
+import Expect
 
 
 all : Test
@@ -18,6 +19,7 @@ all =
         , textSelectors
         , exactTextSelectors
         , selectorAll
+        , selectorWithAll
         ]
 
 
@@ -198,6 +200,93 @@ selectorAll =
                             , Selector.attribute (Attr.disabled False)
                             ]
                         ]
+        , test "passes if all selectors match children element + children" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Query.has
+                        [ Selector.all
+                            [ Selector.tag "fieldset"
+                            , Selector.attribute (Attr.disabled True)
+                            ]
+                        ]
+        , test "fails if no selectors match" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Query.hasNot
+                        [ Selector.all
+                            [ Selector.tag "strong"
+                            , Selector.attribute (Attr.disabled True)
+                            ]
+                        ]
+        , test "fetches the element that matches the last selector" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Query.find
+                        [ Selector.all
+                            [ Selector.tag "button"
+                            , Selector.text "Reply"
+                            ]
+                        ]
+                    -- The resulting element is the lone `Html.text "Reply"`
+                    |> Expect.all
+                        [ Query.hasNot [ Selector.tag "button" ]
+                        , Query.has [ Selector.text "Reply" ]
+                        ]
+        ]
+selectorWithAll : Test
+selectorWithAll =
+    describe "Selector.withAll"
+        [ test "passes if empty" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Query.has [ Selector.withAll [] ]
+        , test "passes if single selector matches" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Query.has
+                        [ Selector.withAll
+                            [ Selector.tag "fieldset"
+                            ]
+                        ]
+        , test "passes if all selectors match" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Query.has
+                        [ Selector.withAll
+                            [ Selector.tag "fieldset"
+                            , Selector.attribute (Attr.disabled False)
+                            ]
+                        ]
         , test "fails if some but not all selectors match (regression for #213)" <|
             \() ->
                 Html.fieldset [ Attr.disabled False ]
@@ -221,9 +310,29 @@ selectorAll =
                     ]
                     |> Query.fromHtml
                     |> Query.hasNot
-                        [ Selector.all
+                        [ Selector.withAll
                             [ Selector.tag "strong"
                             , Selector.attribute (Attr.disabled True)
                             ]
+                        ]
+        , test "does not find when selectors don't apply all to the same element" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Query.find
+                        [ Selector.withAll
+                            -- find starts at the children, so we need to target button here
+                            [ Selector.tag "button"
+                            , Selector.text "Reply"
+                            ]
+                        ]
+                    -- The result is empty, but we have no way to assert that rn
+                    |> Expect.all
+                        [ Query.hasNot [ Selector.tag "button" ]
+                        , Query.hasNot [ Selector.text "Reply" ]
                         ]
         ]
