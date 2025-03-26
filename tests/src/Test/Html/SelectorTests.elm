@@ -3,13 +3,13 @@ module Test.Html.SelectorTests exposing (all)
 {-| Tests for selectors
 -}
 
+import Expect
 import Fuzz exposing (..)
 import Html
 import Html.Attributes as Attr
 import Test exposing (..)
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
-import Expect
 
 
 all : Test
@@ -205,17 +205,39 @@ selectorAllVsWithAll =
                     |> Query.fromHtml
                     |> Expect.all
                         [ Query.has
-                                [ Selector.all
-                                    [ Selector.tag "fieldset"
-                                    , Selector.attribute (Attr.disabled False)
-                                    ]
+                            [ Selector.all
+                                [ Selector.tag "fieldset"
+                                , Selector.attribute (Attr.disabled False)
                                 ]
+                            ]
                         , Query.has
-                                [ Selector.withAll
-                                    [ Selector.tag "fieldset"
-                                    , Selector.attribute (Attr.disabled False)
-                                    ]
+                            [ Selector.withAll
+                                [ Selector.tag "fieldset"
+                                , Selector.attribute (Attr.disabled False)
                                 ]
+                            ]
+                        ]
+        , test "both fail if no selectors match" <|
+            \() ->
+                Html.fieldset [ Attr.disabled False ]
+                    [ Html.button [ Attr.disabled True ]
+                        [ Html.text "Reply"
+                        ]
+                    ]
+                    |> Query.fromHtml
+                    |> Expect.all
+                        [ Query.hasNot
+                            [ Selector.all
+                                [ Selector.tag "strong"
+                                , Selector.attribute (Attr.disabled True)
+                                ]
+                            ]
+                        , Query.hasNot
+                            [ Selector.withAll
+                                [ Selector.tag "strong"
+                                , Selector.attribute (Attr.disabled True)
+                                ]
+                            ]
                         ]
         , describe "when each selector matches separate elements in a hierarchy"
             [ test "Selector.all passes, Selector.withAll fails (regression for #213)" <|
@@ -239,68 +261,46 @@ selectorAllVsWithAll =
                                     ]
                                 ]
                             ]
-            ]
-        , test "both fail if no selectors match" <|
-            \() ->
-                Html.fieldset [ Attr.disabled False ]
-                    [ Html.button [ Attr.disabled True ]
-                        [ Html.text "Reply"
-                        ]
-                    ]
-                    |> Query.fromHtml
-                    |> Expect.all
-                        [ Query.hasNot
-                            [ Selector.all
-                                [ Selector.tag "strong"
-                                , Selector.attribute (Attr.disabled True)
+            , describe "Query.find behavior"
+                [ test "Selector.all fetches the element that matches the last selector" <|
+                    \() ->
+                        Html.fieldset [ Attr.disabled False ]
+                            [ Html.button [ Attr.disabled True ]
+                                [ Html.text "Reply"
                                 ]
                             ]
-                        , Query.hasNot
-                            [ Selector.withAll
-                                [ Selector.tag "strong"
-                                , Selector.attribute (Attr.disabled True)
+                            |> Query.fromHtml
+                            |> Query.find
+                                [ Selector.all
+                                    [ Selector.tag "button"
+                                    , Selector.text "Reply"
+                                    ]
+                                ]
+                            -- The resulting element is the lone `Html.text "Reply"`
+                            |> Expect.all
+                                [ Query.hasNot [ Selector.tag "button" ]
+                                , Query.has [ Selector.text "Reply" ]
+                                ]
+                , test "Selector.withAll finds nothing when selectors don't apply all to the same element" <|
+                    \() ->
+                        Html.fieldset [ Attr.disabled False ]
+                            [ Html.button [ Attr.disabled True ]
+                                [ Html.text "Reply"
                                 ]
                             ]
-                        ]
-        , describe "Query.find behavior when each selector matches separate elements in a hierarchy"
-            [ test "Selector.all fetches the element that matches the last selector" <|
-                \() ->
-                    Html.fieldset [ Attr.disabled False ]
-                        [ Html.button [ Attr.disabled True ]
-                            [ Html.text "Reply"
-                            ]
-                        ]
-                        |> Query.fromHtml
-                        |> Query.find
-                            [ Selector.all
-                                [ Selector.tag "button"
-                                , Selector.text "Reply"
+                            |> Query.fromHtml
+                            |> Query.find
+                                [ Selector.withAll
+                                    -- find starts at the children, so we need to target button here
+                                    [ Selector.tag "button"
+                                    , Selector.text "Reply"
+                                    ]
                                 ]
-                            ]
-                        -- The resulting element is the lone `Html.text "Reply"`
-                        |> Expect.all
-                            [ Query.hasNot [ Selector.tag "button" ]
-                            , Query.has [ Selector.text "Reply" ]
-                            ]
-            , test "Selector.withAll finds nothing when selectors don't apply all to the same element" <|
-                \() ->
-                    Html.fieldset [ Attr.disabled False ]
-                        [ Html.button [ Attr.disabled True ]
-                            [ Html.text "Reply"
-                            ]
-                        ]
-                        |> Query.fromHtml
-                        |> Query.find
-                            [ Selector.withAll
-                                -- find starts at the children, so we need to target button here
-                                [ Selector.tag "button"
-                                , Selector.text "Reply"
+                            -- The result is empty, but we have no way to assert that rn
+                            |> Expect.all
+                                [ Query.hasNot [ Selector.tag "button" ]
+                                , Query.hasNot [ Selector.text "Reply" ]
                                 ]
-                            ]
-                        -- The result is empty, but we have no way to assert that rn
-                        |> Expect.all
-                            [ Query.hasNot [ Selector.tag "button" ]
-                            , Query.hasNot [ Selector.text "Reply" ]
-                            ]
+                ]
             ]
         ]
