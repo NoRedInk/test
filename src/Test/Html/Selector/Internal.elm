@@ -5,7 +5,7 @@ import Test.Html.Internal.ElmHtml.Query as ElmHtmlQuery
 
 
 type Selector
-    = All (List Selector)
+    = Each (List Selector)
     | Classes (List String)
     | Class String
     | Attribute { name : String, value : String }
@@ -34,7 +34,7 @@ selectorToString criteria =
                     "False"
     in
     case criteria of
-        All list ->
+        Each list ->
             list
                 |> List.map selectorToString
                 |> String.join " "
@@ -134,18 +134,18 @@ query :
     -> Selector
     -> List (ElmHtml msg)
     -> List (ElmHtml msg)
-query fn fnAll selector list =
+query fn recursiveQueryFn selector list =
     case list of
         [] ->
             list
 
         elems ->
             case selector of
-                All selectors ->
-                    fnAll selectors elems
+                Each selectors ->
+                    recursiveQueryFn selectors elems
 
                 WithAll selectors ->
-                    applyWithAll fn fnAll selectors elems
+                    applyWithAll fn recursiveQueryFn selectors elems
 
                 Classes classes ->
                     List.concatMap (fn (ElmHtmlQuery.ClassList classes)) elems
@@ -181,7 +181,7 @@ query fn fnAll selector list =
                                     False
 
                                 children ->
-                                    case query fn fnAll (All selectors) children of
+                                    case query fn recursiveQueryFn (Each selectors) children of
                                         [] ->
                                             -- None of our children matched,
                                             -- but their descendants might!
@@ -197,7 +197,7 @@ query fn fnAll selector list =
                     []
 
 
-applyWithAll :     (ElmHtmlQuery.Selector -> ElmHtml msg -> List (ElmHtml msg))
+applyWithAll : (ElmHtmlQuery.Selector -> ElmHtml msg -> List (ElmHtml msg))
     -> (List Selector -> List (ElmHtml msg) -> List (ElmHtml msg))
     -> List Selector
     -> List (ElmHtml msg)
@@ -212,7 +212,7 @@ applyWithAll fn fnAll selectors list =
 selectorToQuery : Selector -> Maybe ElmHtmlQuery.Selector
 selectorToQuery selector =
     case selector of
-        All _ ->
+        Each _ ->
             Nothing
 
         WithAll _ ->
