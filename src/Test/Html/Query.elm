@@ -19,6 +19,7 @@ module Test.Html.Query exposing
 
 @docs count, contains, has, hasNot, each
 
+
 ## Debugging
 
 @docs prettyPrintSingle
@@ -518,15 +519,17 @@ each check (Internal.Multiple showTrace query) =
     Internal.expectAll check query
         |> failWithQuery showTrace "Query.each" query
 
-{-| Pretty prints the result of a query as HTML if successful -}
+
+{-| Pretty prints the result of a query as HTML if successful
+-}
 prettyPrintSingle : Single msg -> Result String String
 prettyPrintSingle (Internal.Single _ query) =
-    case Internal.traverse query of 
-        Ok [ element ] -> 
+    case Internal.traverse query of
+        Ok [ element ] ->
             Ok <| Internal.prettyPrint element
 
-        Ok results -> 
+        Ok results ->
             Err <| "Query.prettyPrintSingle expected exactly one result from query, but found " ++ String.fromInt (List.length results)
 
-        Err queryError -> 
+        Err queryError ->
             Err <| "Query.prettyPrintSingle " ++ Internal.queryErrorToString queryError
