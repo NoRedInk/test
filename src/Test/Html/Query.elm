@@ -19,6 +19,7 @@ module Test.Html.Query exposing
 
 @docs count, contains, has, hasNot, each
 
+
 ## Debugging
 
 @docs prettyPrintSingle
@@ -27,6 +28,8 @@ module Test.Html.Query exposing
 
 import Expect exposing (Expectation)
 import Html exposing (Html)
+import Json.Decode
+import Test.Html.Internal.ElmHtml.InternalTypes as InternalTypes
 import Test.Html.Internal.Inert as Inert
 import Test.Html.Query.Internal as Internal exposing (failWithQuery)
 import Test.Html.Selector exposing (Selector)
@@ -95,8 +98,11 @@ fromHtml html =
             Ok node ->
                 Internal.Query node []
 
-            Err message ->
-                Internal.InternalError message
+            Err (Inert.DecodeError decodeError) ->
+                Internal.InternalError (Json.Decode.errorToString decodeError)
+
+            Err (Inert.ValidationErrors validations) ->
+                Internal.ValidationErrors validations
 
 
 
@@ -377,12 +383,23 @@ contains expectedHtml (Internal.Single showTrace query) =
                 |> failWithQuery showTrace "Query.contains" query
 
         Err errors ->
-            Expect.fail <|
-                String.join "\n" <|
-                    List.concat
-                        [ [ "Internal Error: failed to decode the virtual dom.  Please report this at <https://github.com/elm-explorations/test/issues>." ]
-                        , errors
-                        ]
+            errors
+                |> List.map
+                    (\error ->
+                        (case error of
+                            Inert.DecodeError decodeError ->
+                                [ "Internal Error: failed to decode the virtual dom.  Please report this at <https://github.com/elm-explorations/test/issues>."
+                                , Json.Decode.errorToString decodeError
+                                ]
+
+                            Inert.ValidationErrors { deduped } ->
+                                deduped
+                                    |> List.map InternalTypes.validationMessage
+                        )
+                            |> String.join "\n"
+                    )
+                |> String.join "\n\n"
+                |> Expect.fail
 
 
 collectResults : List (Result x a) -> Result (List x) (List a)
@@ -502,15 +519,17 @@ each check (Internal.Multiple showTrace query) =
     Internal.expectAll check query
         |> failWithQuery showTrace "Query.each" query
 
-{-| Pretty prints the result of a query as HTML if successful -}
+
+{-| Pretty prints the result of a query as HTML if successful
+-}
 prettyPrintSingle : Single msg -> Result String String
 prettyPrintSingle (Internal.Single _ query) =
-    case Internal.traverse query of 
-        Ok [ element ] -> 
+    case Internal.traverse query of
+        Ok [ element ] ->
             Ok <| Internal.prettyPrint element
 
-        Ok results -> 
+        Ok results ->
             Err <| "Query.prettyPrintSingle expected exactly one result from query, but found " ++ String.fromInt (List.length results)
 
-        Err queryError -> 
+        Err queryError ->
             Err <| "Query.prettyPrintSingle " ++ Internal.queryErrorToString queryError

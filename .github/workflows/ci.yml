@@ -16,23 +16,23 @@ jobs:
       matrix:
         # Run on Mac and Linux, for multiple Node versions
         os: [macos-latest, ubuntu-latest]
-        node: ['8', '10', '12', '14']
+        node: ['20', '22', '24', '26']
 
     env:
       ELM_HOME: '${{ github.workspace }}/elm-home'
 
     steps:
       # Clone the repository
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
 
       # Setup Node JS
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
 
       # Install elm and cache ELM_HOME
       - name: Install elm
-        uses: mpizenberg/elm-tooling-action@v1.2
+        uses: mpizenberg/elm-tooling-action@v2
         with:
           cache-key: tests-${{ matrix.os }}-node${{ matrix.node }}-0
           cache-restore-key: tests-${{ matrix.os }}-node${{ matrix.node }}
@@ -46,11 +46,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Clone the repository
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
 
       # Install elm-format
       - name: Install elm-format
-        uses: mpizenberg/elm-tooling-action@v1.2
+        uses: mpizenberg/elm-tooling-action@v2
         with:
           cache-key: format-${{ matrix.os }}-node${{ matrix.node }}-0
           cache-restore-key: format-${{ matrix.os }}-node${{ matrix.node }}

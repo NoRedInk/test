@@ -1,4 +1,4 @@
-module File exposing (AbsolutePath, FileError(..), RelativePath, overwriteGoldenFiles, readFile, writeFile, deleteFile)
+module File exposing (AbsolutePath, FileError(..), RelativePath, deleteFile, overwriteGoldenFiles, readFile, writeFile)
 
 import Elm.Kernel.Test
 
@@ -34,10 +34,13 @@ writeFile : RelativePath -> String -> Result FileError AbsolutePath
 writeFile =
     Elm.Kernel.Test.writeFile
 
-{-| Delete the file specified in filePath relative to "tests/" -}
+
+{-| Delete the file specified in filePath relative to "tests/"
+-}
 deleteFile : RelativePath -> Result FileError ()
-deleteFile = 
+deleteFile =
     Elm.Kernel.Test.deleteFile
+
 
 {-| Checks the OVERWRITE\_GOLDEN\_FILES environment variable
 -}
