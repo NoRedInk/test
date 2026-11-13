@@ -633,8 +633,8 @@ equalToFile filePath actual =
             Err File.FileNotFound ->
                 writeGoldenFile ()
 
-            Err err ->
-                handleFileError "Expect.equalToFile" err
+            Err fileError ->
+                handleFileError "Expect.equalToFile" fileError
 
             Ok ( existingAbsolutePath, contents ) ->
                 if actual == contents then
@@ -660,6 +660,7 @@ equalToFile filePath actual =
                         _ ->
                             fail "Expect.equalToFile encountered an unexpected error"
 
+
 handleFileError : String -> File.FileError -> Expectation
 handleFileError userFn error =
     case error of
@@ -675,6 +676,7 @@ handleFileError userFn error =
         File.GeneralFileError fileError ->
             fail (userFn ++ " encountered a general file error: " ++ fileError)
 
+
 {-| Load a file, parse it, and run expectations against the contents
 
     import Test exposing (test)
@@ -687,17 +689,18 @@ handleFileError userFn error =
             Expect.withParsedFile "path/to/flags.json" (decodeString int >> Result.map errorToString) <|
                 \id ->
                     id |> Expect.equal 42
+
 -}
 withParsedFile : String -> (String -> Result String a) -> (a -> Expectation) -> Expectation
 withParsedFile filePath parseContents expectParsed =
     case File.readFile filePath of
-        Err err ->
-            handleFileError "Expect.withParsedFile" err
+        Err fileError ->
+            handleFileError "Expect.withParsedFile" fileError
 
         Ok ( absolutePath, contents ) ->
             case parseContents contents of
-                Err err ->
-                    fail <| "Expect.withParsedFile failed to parse the given file\n" ++ absolutePath ++ "\n" ++ err
+                Err parseError ->
+                    fail <| "Expect.withParsedFile failed to parse the given file\n" ++ absolutePath ++ "\n" ++ parseError
 
                 Ok parsed ->
                     expectParsed parsed
