@@ -3,7 +3,7 @@ module Expect exposing
     , lessThan, atMost, greaterThan, atLeast
     , FloatingPointTolerance(..), within, notWithin
     , ok, err, equalLists, equalDicts, equalSets
-    , equalToFile
+    , equalToFile, withParsedFile
     , pass, fail, onFail
     )
 
@@ -46,7 +46,7 @@ or both. For an in-depth look, see our [Guide to Floating Point Comparison](#gui
 
 ## Golden Files
 
-@docs equalToFile
+@docs equalToFile, withParsedFile
 
 
 ## Customizing
@@ -633,14 +633,8 @@ equalToFile filePath actual =
             Err File.FileNotFound ->
                 writeGoldenFile ()
 
-            Err File.IsDirectory ->
-                Test.Expectation.fail { description = "Expect.equalToFile was given a directory instead of a file", reason = Custom }
-
-            Err File.PathEscapesDirectory ->
-                Test.Expectation.fail { description = "Expect.equalToFile was given a path that would escape the tests/ directory", reason = Custom }
-
-            Err (File.GeneralFileError fileError) ->
-                Test.Expectation.fail { description = "Expect.equalToFile encountered a general file error: " ++ fileError, reason = Custom }
+            Err fileError ->
+                handleFileError "Expect.equalToFile" fileError
 
             Ok ( existingAbsolutePath, contents ) ->
                 if actual == contents then
@@ -661,10 +655,55 @@ equalToFile filePath actual =
                                     , Just <| "To accept these changes delete \"" ++ filePath ++ "\" or specify OVERWRITE_GOLDEN_FILES=1 when running elm-test"
                                     ]
                             in
-                            Test.Expectation.fail { description = String.join "\n\n" (List.filterMap identity message), reason = Custom }
+                            fail (String.join "\n\n" (List.filterMap identity message))
 
                         _ ->
-                            Test.Expectation.fail { description = "Expect.equalToFile encountered an unexpected error", reason = Custom }
+                            fail "Expect.equalToFile encountered an unexpected error"
+
+
+handleFileError : String -> File.FileError -> Expectation
+handleFileError userFn error =
+    case error of
+        File.FileNotFound ->
+            fail (userFn ++ " could not find the given file")
+
+        File.IsDirectory ->
+            fail (userFn ++ " was given a directory instead of a file")
+
+        File.PathEscapesDirectory ->
+            fail (userFn ++ " was given a path that would escape the tests/ directory")
+
+        File.GeneralFileError fileError ->
+            fail (userFn ++ " encountered a general file error: " ++ fileError)
+
+
+{-| Load a file, parse it, and run expectations against the contents
+
+    import Test exposing (test)
+    import Expect
+    import Json.Decode exposing (decodeString, errorToString, int)
+    import Result
+
+    test "JSON reference file should decode and equal 42" <|
+        \_ ->
+            Expect.withParsedFile "path/to/flags.json" (decodeString int >> Result.map errorToString) <|
+                \id ->
+                    id |> Expect.equal 42
+
+-}
+withParsedFile : String -> (String -> Result String a) -> (a -> Expectation) -> Expectation
+withParsedFile filePath parseContents expectParsed =
+    case File.readFile filePath of
+        Err fileError ->
+            handleFileError "Expect.withParsedFile" fileError
+
+        Ok ( absolutePath, contents ) ->
+            case parseContents contents of
+                Err parseError ->
+                    fail <| "Expect.withParsedFile failed to parse the given file\n" ++ absolutePath ++ "\n" ++ parseError
+
+                Ok parsed ->
+                    expectParsed parsed
 
 
 {-| Always passes.
